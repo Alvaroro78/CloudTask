@@ -47,6 +47,7 @@ function renderTasks() {
           <button data-action="toggle" data-id="${task.id}">
             ${task.completed ? "Reabrir" : "Completar"}
           </button>
+          <button data-action="delete" data-id="${task.id}">Eliminar</button>
         </div>
       </div>
       <p>${escapeHtml(task.description || "")}</p>
@@ -89,7 +90,14 @@ taskList.addEventListener("click", (e) => {
   const btn = e.target.closest("button");
   if (!btn) return;
   if (btn.dataset.action === "toggle") toggleTaskCompleted(btn.dataset.id);
+  if (btn.dataset.action === "delete") deleteTask(btn.dataset.id);
 });
+
+function deleteTask(id) {
+  tasksCache = tasksCache.filter(t => t.id !== id);
+  saveTasks();
+  renderTasks();
+}
 
 loadTasks();
 renderTasks();
