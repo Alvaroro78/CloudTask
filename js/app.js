@@ -1,9 +1,35 @@
-let tasksCache = [
-  { id: "1", title: "Tarea de ejemplo", description: "Solo para probar el render", completed: false, priority: "medium", deadline: null }
-];
+const STORAGE_KEY = "cloudtasks_local";
+
+const form = document.getElementById("task-form");
+const taskList = document.getElementById("task-list");
+
+let tasksCache = [];
+
+function loadTasks() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  tasksCache = raw ? JSON.parse(raw) : [];
+}
+
+function saveTasks() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasksCache));
+}
+
+function generateId() {
+  return crypto.randomUUID();
+}
+
+function createTask(task) {
+  const newTask = {
+    id: generateId(),
+    created_at: new Date().toISOString(),
+    ...task,
+  };
+  tasksCache.unshift(newTask);
+  saveTasks();
+  renderTasks();
+}
 
 function renderTasks() {
-  const taskList = document.getElementById("task-list");
   taskList.innerHTML = "";
 
   if (tasksCache.length === 0) {
@@ -33,4 +59,17 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+
+  const title = document.getElementById("title").value.trim();
+  const description = document.getElementById("description").value.trim();
+  const deadline = document.getElementById("deadline").value || null;
+  const priority = document.getElementById("priority").value;
+
+  createTask({ title, description, deadline, priority, completed: false });
+  form.reset();
+});
+
+loadTasks();
 renderTasks();
