@@ -30,14 +30,21 @@ function createTask(task) {
 }
 
 function renderTasks() {
+  const taskList = document.getElementById("task-list");
   taskList.innerHTML = "";
 
-  if (tasksCache.length === 0) {
+  const filtered = tasksCache.filter(t => {
+    if (currentFilter === "pending") return !t.completed;
+    if (currentFilter === "completed") return t.completed;
+    return true;
+  });
+
+  if (filtered.length === 0) {
     taskList.innerHTML = "<p>No hay tareas para mostrar.</p>";
     return;
   }
 
-  tasksCache.forEach(task => {
+  filtered.forEach(task => {
     const li = document.createElement("li");
     li.className = `task-item priority-${task.priority} ${task.completed ? "completed" : ""}`;
     li.innerHTML = `
@@ -58,6 +65,16 @@ function renderTasks() {
     taskList.appendChild(li);
   });
 }
+  
+filterButtons.forEach(btn => {
+  btn.addEventListener("click", () => {
+    filterButtons.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentFilter = btn.dataset.filter;
+    renderTasks();
+  });
+});
+
 
 function escapeHtml(str) {
   const div = document.createElement("div");
