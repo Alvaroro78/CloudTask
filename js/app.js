@@ -99,5 +99,25 @@ function deleteTask(id) {
   renderTasks();
 }
 
+const formError = document.getElementById("form-error");
+
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  formError.textContent = "";
+
+  const title = document.getElementById("title").value.trim();
+  const description = document.getElementById("description").value.trim();
+  const deadline = document.getElementById("deadline").value || null;
+  const priority = document.getElementById("priority").value;
+
+  if (!title) {
+    formError.textContent = "El título es obligatorio.";
+    return;
+  }
+
+  createTask({ title, description, deadline, priority, completed: false });
+  form.reset();
+});
+
 loadTasks();
 renderTasks();
