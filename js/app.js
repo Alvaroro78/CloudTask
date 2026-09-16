@@ -1,36 +1,57 @@
-const STORAGE_KEY = "cloudtasks_local";
+const SUPABASE_URL = "https://uwbyqwhktanhtrpauqtd.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_KsmCfLOtrAYc1522SyNeFg_srNUQzem";
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const form = document.getElementById("task-form");
 const taskList = document.getElementById("task-list");
+const formError = document.getElementById("form-error");
+const filterButtons = document.querySelectorAll(".filter-btn");
 
 let tasksCache = [];
+let currentFilter = "all";
 
-function loadTasks() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  tasksCache = raw ? JSON.parse(raw) : [];
-}
+async function fetchTasks() {
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("*")
+    .order("created_at", { ascending: false });
 
-function saveTasks() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasksCache));
-}
-
-function generateId() {
-  return crypto.randomUUID();
-}
-
-function createTask(task) {
-  const newTask = {
-    id: generateId(),
-    created_at: new Date().toISOString(),
-    ...task,
-  };
-  tasksCache.unshift(newTask);
-  saveTasks();
+  if (error) {
+    console.error(error);
+    formError.textContent = "Error al cargar tareas.";
+    return;
+  }
+  tasksCache = data;
   renderTasks();
 }
 
+async function createTask(task) {
+  const { error } = await supabase.from("tasks").insert([task]);
+  if (error) {
+    console.error(error);
+    formError.textContent = "No se pudo guardar la tarea.";
+    return;
+  }
+  await fetchTasks();
+}
+
+async function toggleTaskCompleted(id, completed) {
+  const { error } = await supabase
+    .from("tasks")
+    .update({ completed: !completed })
+    .eq("id", id);
+  if (error) console.error(error);
+  await fetchTasks();
+}
+
+async function deleteTask(id) {
+  const { error } = await supabase.from("tasks").delete().eq("id", id);
+  if (error) console.error(error);
+  await fetchTasks();
+}
+
 function renderTasks() {
-  const taskList = document.getElementById("task-list");
   taskList.innerHTML = "";
 
   const filtered = tasksCache.filter(t => {
@@ -51,7 +72,7 @@ function renderTasks() {
       <div class="task-item-header">
         <strong>${escapeHtml(task.title)}</strong>
         <div class="task-actions">
-          <button data-action="toggle" data-id="${task.id}">
+          <button data-action="toggle" data-id="${task.id}" data-completed="${task.completed}">
             ${task.completed ? "Reabrir" : "Completar"}
           </button>
           <button data-action="delete" data-id="${task.id}">Eliminar</button>
@@ -65,16 +86,6 @@ function renderTasks() {
     taskList.appendChild(li);
   });
 }
-  
-filterButtons.forEach(btn => {
-  btn.addEventListener("click", () => {
-    filterButtons.forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    currentFilter = btn.dataset.filter;
-    renderTasks();
-  });
-});
-
 
 function escapeHtml(str) {
   const div = document.createElement("div");
@@ -82,43 +93,7 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-form.addEventListener("submit", (e) => {
-  e.preventDefault();
-
-  const title = document.getElementById("title").value.trim();
-  const description = document.getElementById("description").value.trim();
-  const deadline = document.getElementById("deadline").value || null;
-  const priority = document.getElementById("priority").value;
-
-  createTask({ title, description, deadline, priority, completed: false });
-  form.reset();
-});
-
-function toggleTaskCompleted(id) {
-  const task = tasksCache.find(t => t.id === id);
-  if (task) task.completed = !task.completed;
-  saveTasks();
-  renderTasks();
-}
-
-const taskList = document.getElementById("task-list");
-
-taskList.addEventListener("click", (e) => {
-  const btn = e.target.closest("button");
-  if (!btn) return;
-  if (btn.dataset.action === "toggle") toggleTaskCompleted(btn.dataset.id);
-  if (btn.dataset.action === "delete") deleteTask(btn.dataset.id);
-});
-
-function deleteTask(id) {
-  tasksCache = tasksCache.filter(t => t.id !== id);
-  saveTasks();
-  renderTasks();
-}
-
-const formError = document.getElementById("form-error");
-
-form.addEventListener("submit", (e) => {
+form.addEventListener("submit", async (e) => {
   e.preventDefault();
   formError.textContent = "";
 
@@ -132,9 +107,28 @@ form.addEventListener("submit", (e) => {
     return;
   }
 
-  createTask({ title, description, deadline, priority, completed: false });
+  await createTask({ title, description, deadline, priority, completed: false });
   form.reset();
 });
 
-loadTasks();
-renderTasks();
+taskList.addEventListener("click", (e) => {
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  const id = btn.dataset.id;
+
+  if (btn.dataset.action === "delete") deleteTask(id);
+  if (btn.dataset.action === "toggle") {
+    toggleTaskCompleted(id, btn.dataset.completed === "true");
+  }
+});
+
+filterButtons.forEach(btn => {
+  btn.addEventListener("click", () => {
+    filterButtons.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentFilter = btn.dataset.filter;
+    renderTasks();
+  });
+});
+
+fetchTasks();
