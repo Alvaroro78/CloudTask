@@ -43,6 +43,11 @@ function renderTasks() {
     li.innerHTML = `
       <div class="task-item-header">
         <strong>${escapeHtml(task.title)}</strong>
+        <div class="task-actions">
+          <button data-action="toggle" data-id="${task.id}">
+            ${task.completed ? "Reabrir" : "Completar"}
+          </button>
+        </div>
       </div>
       <p>${escapeHtml(task.description || "")}</p>
       <div class="task-meta">
@@ -69,6 +74,21 @@ form.addEventListener("submit", (e) => {
 
   createTask({ title, description, deadline, priority, completed: false });
   form.reset();
+});
+
+function toggleTaskCompleted(id) {
+  const task = tasksCache.find(t => t.id === id);
+  if (task) task.completed = !task.completed;
+  saveTasks();
+  renderTasks();
+}
+
+const taskList = document.getElementById("task-list");
+
+taskList.addEventListener("click", (e) => {
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  if (btn.dataset.action === "toggle") toggleTaskCompleted(btn.dataset.id);
 });
 
 loadTasks();
